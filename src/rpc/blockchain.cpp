@@ -723,13 +723,15 @@ static UniValue getblockhash(const JSONRPCRequest& request)
                 },
             }.ToString());
 
-    LOCK(cs_main);
-
     int nHeight = request.params[0].get_int();
     if (nHeight < 0 || nHeight > chainActive.Height())
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Block height out of range");
 
-    CBlockIndex* pblockindex = chainActive[nHeight];
+    CBlockIndex* pblockindex = nullptr;
+    {
+        LOCK(cs_main);
+        pblockindex = chainActive[nHeight];
+    }
     return pblockindex->GetBlockHash().GetHex();
 }
 
@@ -880,8 +882,6 @@ static UniValue getblock(const JSONRPCRequest& request)
                 },
             }.ToString());
 
-    LOCK(cs_main);
-
     uint256 hash(ParseHashV(request.params[0], "blockhash"));
 
     int verbosity = 1;
@@ -891,8 +891,11 @@ static UniValue getblock(const JSONRPCRequest& request)
         else
             verbosity = request.params[1].get_bool() ? 1 : 0;
     }
-
-    const CBlockIndex* pblockindex = LookupBlockIndex(hash);
+    CBlockIndex* pblockindex = nullptr;
+    {
+        LOCK(cs_main);
+        pblockindex = LookupBlockIndex(hash);
+    }
     if (!pblockindex) {
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block not found");
     }
